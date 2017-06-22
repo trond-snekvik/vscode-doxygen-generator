@@ -39,5 +39,9 @@
         "@types/node": "^6.0.40",
         "@types/mocha": "^2.2.32"
     },
-    "license": "MIT"
+    "license": "MIT",
+    "repository": {
+        "url": "https://github.com/trond-snekvik/vscode-doxygen-generator",
+        "type": "git"
+    }
 }
