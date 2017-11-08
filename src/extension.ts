@@ -9,7 +9,7 @@ function doxyFormatText(text: string) {
 
 export class FunctionParameter {
     name: string;
-    direction: string; 
+    direction: string;
     index?: number;
     type?: string;
     description?: string;
@@ -57,7 +57,7 @@ export class FunctionDefinition {
     /** Merge the other definition into this. */
     merge(other: FunctionDefinition, adoptParamDirection: boolean) {
         // Adopt description if we don't have one.
-        if (other.description && !this.description) 
+        if (other.description && !this.description)
             this.description = other.description;
 
         // The parameters the other had, that we didn't have.
@@ -70,13 +70,13 @@ export class FunctionDefinition {
         // pair params with the same name
         other.parameters.forEach(theirParam => {
             var ourParam = this.parameters.find(ourParam => (ourParam.name == theirParam.name));
-            if (ourParam) 
+            if (ourParam)
                 pairs.push({ours: ourParam, theirs: theirParam});
         });
         // pair orphans with the same index (the name probably changed)
         ourOrphans.forEach(ourParam => {
             var theirParam = othersOrphans.find(theirParam => (theirParam.index == ourParam.index));
-            if (theirParam) 
+            if (theirParam)
                 pairs.push({ours: ourParam, theirs: theirParam});
         });
 
@@ -86,7 +86,7 @@ export class FunctionDefinition {
             if (pair.theirs.type && !pair.ours.type) pair.ours.type = pair.theirs.type;
         })
 
-        if (this.returnDescriptions.length == 0 && this.returns) 
+        if (this.returnDescriptions.length == 0 && this.returns)
             this.returnDescriptions = other.returnDescriptions.slice();
     }
 }
@@ -94,9 +94,9 @@ export class FunctionDefinition {
 export function getFunction(text: string) : FunctionDefinition {
     var func = new FunctionDefinition();
     // find the last function in the text
-    var match = text.match(/(((?:[\w_\d*]+\s+|\**)+)([\w_\d*]+)\s*\(([\s\S]*?)\))\s*(;|{|\s*$)[^{}();]*$/);
-    if (!match) 
-        return null; 
+    var match = text.match(/(((?:\b[*a-zA-Z_]\w+\**\s+|\**)+)([\w_\d*]+)\s*\(([^()]*?)\))\s*(;|{|\s*$)/);
+    if (!match)
+        return null;
     func.fullSignature = match[1];
     func.name = match[3];
     func.returns = (!match[2].includes('void') || match[2].includes('*'));
@@ -105,9 +105,9 @@ export function getFunction(text: string) : FunctionDefinition {
         (match[4] as string).split(',').forEach((textParam, index) => {
             var paramMatch = textParam.match(/\s*(.*)\s+\**([\w_][\w_\d]*)\s*/);
             if (paramMatch) {
-            var param = new FunctionParameter(paramMatch[2], paramMatch[1]);
+                var param = new FunctionParameter(paramMatch[2], paramMatch[1]);
                 param.index = index;
-            func.parameters.push(param);
+                func.parameters.push(param);
             }
         });
     }
@@ -120,15 +120,15 @@ function getLastDoxyBlock(text: string): string {
     return fullComment[1];
 }
 
-/** 
- * Parses the text as function documentation. 
+/**
+ * Parses the text as function documentation.
  */
 export function getFunctionFromDoxygen(text: string) : FunctionDefinition {
     var func = new FunctionDefinition();
     var description = text.match(/^\/\*\*\s*([\s\S]*?)(?:@param|@ret|\*\/$)/);
     var params = text.match(/@param[\s\S]+?(?=@param|@ret|@note|@warning|@info|\*\/$)/g);
     var returns = text.match(/@(?:returns|return|retval)\s+[\s\S]*?(?=@param|@ret|@note|@warning|@info|\*\/$)/g);
-    
+
     if (description.length > 1) func.description = description[1];
     if (params) {
         params.forEach((text, index) => {
@@ -159,7 +159,7 @@ function generateParamSnippet(param: FunctionParameter, snippet: vscode.SnippetS
     if (param.direction)
         snippet.appendText(`[${param.direction}]`);
     snippet.appendText(` ${param.name} `)
-    if (param.description) 
+    if (param.description)
         snippet.appendPlaceholder(param.description, index);
     else
         snippet.appendTabstop(index);
@@ -173,7 +173,7 @@ var LINE_SEPARATOR = ' *\n';
 
 export function generateSnippet(func: FunctionDefinition): vscode.SnippetString {
     var snippet = new vscode.SnippetString(SNIPPET_START);
-    
+
     snippet.appendText(' * ');
     var tabstopIndex = 1;
 
@@ -188,7 +188,7 @@ export function generateSnippet(func: FunctionDefinition): vscode.SnippetString 
         snippet.appendTabstop(tabstopIndex++);
         snippet.appendText('\n' + LINE_SEPARATOR);
     }
-    
+
     if (func.parameters.length > 0) {
         func.parameters.forEach((p, index) => {
             snippet = generateParamSnippet(p, snippet, tabstopIndex++);
@@ -196,7 +196,7 @@ export function generateSnippet(func: FunctionDefinition): vscode.SnippetString 
     }
     if (func.returns) {
         snippet.appendText(LINE_SEPARATOR);
-        if (func.returnDescriptions.length > 0) 
+        if (func.returnDescriptions.length > 0)
             func.returnDescriptions.forEach((r: string, index: number) => {
                 let [_, retkind, space, text] = r.match(/^(\S+)(\s*)([\s\S]*)/);
                 snippet.appendText(' * @'+retkind);
@@ -229,7 +229,7 @@ function generateSnippetFromDoc(cursor: vscode.Position, document: vscode.TextDo
         text = newTextMatch[1]
     }
     // find the last closing brace to reduce the regex search
-    var blockStart = text.lastIndexOf(';');
+    var blockStart = Math.max(text.lastIndexOf(';'), text.lastIndexOf('}'));
     if (blockStart > 0)
         text = text.slice(blockStart);
     else
@@ -241,7 +241,7 @@ function generateSnippetFromDoc(cursor: vscode.Position, document: vscode.TextDo
     var fullComment = getLastDoxyBlock(text);
     if (fullComment) {
         func.merge(getFunctionFromDoxygen(fullComment), true);
-        
+
         var range = new vscode.Range(document.positionAt(blockStart + text.lastIndexOf(fullComment)), document.positionAt(blockStart + text.length));
         return [generateSnippet(func), range];
     }
@@ -252,11 +252,11 @@ function generateSnippetFromDoc(cursor: vscode.Position, document: vscode.TextDo
 }
 
 class DoxyCodeActionProvider implements vscode.CodeActionProvider {
-    provideCodeActions(document: vscode.TextDocument, 
-                       range: vscode.Range, 
-                       context: vscode.CodeActionContext, 
+    provideCodeActions(document: vscode.TextDocument,
+                       range: vscode.Range,
+                       context: vscode.CodeActionContext,
                        token: vscode.CancellationToken): vscode.ProviderResult<vscode.Command[]> {
-        
+
         return [];
     }
 }
@@ -264,13 +264,13 @@ class DoxyCodeActionProvider implements vscode.CodeActionProvider {
 export function activate(context: vscode.ExtensionContext) {
 
     console.log('Congratulations, your extension "doxygen-generator" is now active!');
-    
+
     let disposable = vscode.commands.registerCommand('doxygen-generator.generate', () => {
         let lineStart = new vscode.Position(vscode.window.activeTextEditor.selection.start.line, 0);
 
         let [snippet, position] = generateSnippetFromDoc(lineStart, vscode.window.activeTextEditor.document);
 
-        if (snippet) 
+        if (snippet)
             vscode.window.activeTextEditor.insertSnippet(snippet, position);
     });
     context.subscriptions.push(disposable);
