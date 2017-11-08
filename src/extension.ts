@@ -61,21 +61,21 @@ export class FunctionDefinition {
             this.description = other.description;
 
         // The parameters the other had, that we didn't have.
-        var othersOrphans : FunctionParameter[] = other.parameters.filter((param: FunctionParameter) => !this.parameters.find(p => p.name == param.name)); 
+        var othersOrphans : FunctionParameter[] = other.parameters.filter(param => !this.parameters.find(p => p.name == param.name));
         // The parameters we had, that they didn't have.
-        var ourOrphans: FunctionParameter[] = this.parameters.filter((param: FunctionParameter) => !other.parameters.find(p => p.name == param.name)); 
+        var ourOrphans: FunctionParameter[] = this.parameters.filter(param => !other.parameters.find(p => p.name == param.name));
 
         var pairs: {ours: FunctionParameter, theirs: FunctionParameter}[] = [];
 
         // pair params with the same name
-        other.parameters.forEach((theirParam: FunctionParameter) => {
-            var ourParam = this.parameters.find((ourParam: FunctionParameter) => (ourParam.name == theirParam.name));
+        other.parameters.forEach(theirParam => {
+            var ourParam = this.parameters.find(ourParam => (ourParam.name == theirParam.name));
             if (ourParam) 
                 pairs.push({ours: ourParam, theirs: theirParam});
         });
         // pair orphans with the same index (the name probably changed)
         ourOrphans.forEach(ourParam => {
-            var theirParam = other.parameters.find((theirParam: FunctionParameter) => (theirParam.index == ourParam.index));
+            var theirParam = othersOrphans.find(theirParam => (theirParam.index == ourParam.index));
             if (theirParam) 
                 pairs.push({ours: ourParam, theirs: theirParam});
         });
@@ -102,12 +102,13 @@ export function getFunction(text: string) : FunctionDefinition {
     func.returns = (!match[2].includes('void') || match[2].includes('*'));
 
     if ((match[4] as string).trim() != 'void') {
-        (match[4] as string).split(',').forEach(textParam => {
+        (match[4] as string).split(',').forEach((textParam, index) => {
             var paramMatch = textParam.match(/\s*(.*)\s+\**([\w_][\w_\d]*)\s*/);
-            if (!paramMatch)
-                return null;
+            if (paramMatch) {
             var param = new FunctionParameter(paramMatch[2], paramMatch[1]);
+                param.index = index;
             func.parameters.push(param);
+            }
         });
     }
     return func;
