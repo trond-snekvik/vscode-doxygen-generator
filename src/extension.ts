@@ -201,7 +201,7 @@ function generateParamSnippet(param: FunctionParameter, snippet: vscode.SnippetS
         snippet.appendText(`[${param.direction}]`);
     snippet.appendText(` ${param.name} `)
     if (param.description)
-        snippet.appendPlaceholder(param.description, index);
+        snippet.appendPlaceholder(param.description.trim(), index);
     else
         snippet.appendTabstop(index);
     snippet.appendText('\n');
