@@ -131,7 +131,7 @@ export function getFunctionFromDoxygen(text: string) : FunctionDefinition {
     if (description.length > 1) func.description = description[1];
     if (params) {
         params.forEach((text, index) => {
-            var match = text.match(/@param(?:\[([^\]]+)\])\s*([\w\d_]+)(?:\s+([\s\S]*))/);
+            var match = text.match(/@param(?:\[([^\]]+)\])?\s*([\w\d_]+)(?:\s+([\s\S]*))/);
             if (match.length > 0) {
                 var param = new FunctionParameter(match[2]);
                 param.direction = match[1];
@@ -154,7 +154,10 @@ export function getFunctionFromDoxygen(text: string) : FunctionDefinition {
 }
 
 function generateParamSnippet(param: FunctionParameter, snippet: vscode.SnippetString, index: number): vscode.SnippetString {
-    snippet.appendText(' * @param['+ param.direction + '] ' + param.name + ' ');
+    snippet.appendText(` * @param`);
+    if (param.direction)
+        snippet.appendText(`[${param.direction}]`);
+    snippet.appendText(` ${param.name} `)
     if (param.description) 
         snippet.appendPlaceholder(param.description, index);
     else
