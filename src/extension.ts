@@ -279,19 +279,19 @@ function generateSnippetFromDoc(cursor: vscode.Position, document: vscode.TextDo
             blockStart = 0;
     }
     else {
-    // find the first block end after the cursor, and cut off there
-    var matcher = new RegExp('((?:.*(?:\\r\\n|\\n|\\r)){' + (cursor.line - 1) + '}[\\s\\S]*?)[;{}]', 'm');
-    var newTextMatch = text.match(matcher);
-    if (newTextMatch && newTextMatch.length > 0) {
-        text = newTextMatch[1]
-    }
+        // find the first block end after the cursor, and cut off there
+        var matcher = new RegExp('((?:.*(?:\\r\\n|\\n|\\r)){' + (cursor.line - 1) + '}[\\s\\S]*?)[;{}]', 'm');
+        var newTextMatch = text.match(matcher);
+        if (newTextMatch && newTextMatch.length > 0) {
+            text = newTextMatch[1]
+        }
 
-    // find the last closing brace to reduce the regex search
-    var blockStart = Math.max(text.lastIndexOf(';'), text.lastIndexOf('}'));
-    if (blockStart > 0)
-        text = text.slice(blockStart);
-    else
-        blockStart = 0;
+        // find the last closing brace to reduce the regex search
+        var blockStart = Math.max(text.lastIndexOf(';'), text.lastIndexOf('}'));
+        if (blockStart > 0)
+            text = text.slice(blockStart);
+        else
+            blockStart = 0;
         func = getFunction(text) || getFunctionType(text);
         text = text.slice(0, text.lastIndexOf(func.fullSignature));
     }
@@ -321,8 +321,6 @@ class DoxyCodeActionProvider implements vscode.CodeActionProvider {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-
-    console.log('Congratulations, your extension "doxygen-generator" is now active!');
 
     let disposable = vscode.commands.registerCommand('doxygen-generator.generate', () => {
         let lineStart = new vscode.Position(vscode.window.activeTextEditor.selection.start.line, 0);
