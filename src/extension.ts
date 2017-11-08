@@ -94,7 +94,48 @@ export class FunctionDefinition {
 export function getFunction(text: string) : FunctionDefinition {
     var func = new FunctionDefinition();
     // find the last function in the text
-    var match = text.match(/(((?:\b[*a-zA-Z_]\w+\**\s+|\**)+)([\w_\d*]+)\s*\(([^()]*?)\))\s*(;|{|\s*$)/);
+    var match = text.match(/(((?:[*a-zA-Z_][*\w]*\s+|\**)+)([\w_\d*]+)\s*\(([^()]*?)\))\s*(;|{|\s*$)/);
+    if (!match)
+        return null;
+    func.fullSignature = match[1];
+    func.name = match[3];
+    func.returns = (!match[2].includes('void') || match[2].includes('*'));
+
+    if ((match[4] as string).trim() != 'void') {
+        (match[4] as string).split(',').forEach((textParam, index) => {
+            var paramMatch = textParam.match(/\s*(.*)\s+\**([\w_][\w_\d]*)\s*/);
+            if (paramMatch) {
+                var param = new FunctionParameter(paramMatch[2], paramMatch[1]);
+                param.index = index;
+                func.parameters.push(param);
+            }
+        });
+    }
+    return func;
+}
+
+export function getMacro(text: string) : FunctionDefinition {
+    var func = new FunctionDefinition();
+    // find the last function in the text
+    var match = text.match(/(^#define\s+([\w][\w*]+)\(([^()]*?)\))\s*/m);
+    if (!match)
+        return null;
+    func.fullSignature = match[1];
+    func.name = match[2];
+    func.returns = false;
+    (match[3] as string).split(',').filter(p => p.trim() != '...').forEach((textParam, index) => {
+        var param = new FunctionParameter(textParam);
+        param.index = index;
+        func.parameters.push(param);
+    });
+
+    return func;
+}
+
+export function getFunctionType(text: string) : FunctionDefinition {
+    var func = new FunctionDefinition();
+    // find the last function in the text
+    var match = text.match(/(typedef ((?:[*a-zA-Z_][*\w]*\s+|\**)+)\(\*([\w_\d*]+)\)\s*\(([^()]*?)\))\s*$/);
     if (!match)
         return null;
     func.fullSignature = match[1];
@@ -222,22 +263,40 @@ export function generateSnippet(func: FunctionDefinition): vscode.SnippetString 
 
 function generateSnippetFromDoc(cursor: vscode.Position, document: vscode.TextDocument): [vscode.SnippetString, vscode.Position | vscode.Range] {
     var text = document.getText(new vscode.Range(0, 0, cursor.line + 50, 9999));
+    var fromCurrentLine = document.getText(new vscode.Range(cursor.line, 0, cursor.line + 50, 9999));
+    var func: FunctionDefinition;
+    if (fromCurrentLine.startsWith('#define')) {
+        // This is a macro, and macro names must be defined on a single line
+        func = getMacro(fromCurrentLine);
+
+        text = text.slice(0, text.lastIndexOf(func.fullSignature));
+
+        // find the last closing brace to reduce the regex search
+        var blockStart = Math.max(text.lastIndexOf(';'), text.lastIndexOf('}'));
+        if (blockStart > 0)
+            text = text.slice(blockStart);
+        else
+            blockStart = 0;
+    }
+    else {
     // find the first block end after the cursor, and cut off there
     var matcher = new RegExp('((?:.*(?:\\r\\n|\\n|\\r)){' + (cursor.line - 1) + '}[\\s\\S]*?)[;{}]', 'm');
     var newTextMatch = text.match(matcher);
     if (newTextMatch && newTextMatch.length > 0) {
         text = newTextMatch[1]
     }
+
     // find the last closing brace to reduce the regex search
     var blockStart = Math.max(text.lastIndexOf(';'), text.lastIndexOf('}'));
     if (blockStart > 0)
         text = text.slice(blockStart);
     else
         blockStart = 0;
-    var func = getFunction(text);
+        func = getFunction(text) || getFunctionType(text);
+        text = text.slice(0, text.lastIndexOf(func.fullSignature));
+    }
     if (!func) return [null, null];
     // cut off the text where the function we found begins, to find the doxyblock
-    text = text.slice(0, text.lastIndexOf(func.fullSignature));
     var fullComment = getLastDoxyBlock(text);
     if (fullComment) {
         func.merge(getFunctionFromDoxygen(fullComment), true);
