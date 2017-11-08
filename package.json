@@ -2,7 +2,7 @@
     "name": "doxygen-generator",
     "displayName": "Doxygen Generator",
     "description": "Generate doxygen for the function under the cursor",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "publisher": "trond-snekvik",
     "engines": {
         "vscode": "^1.12.0"
