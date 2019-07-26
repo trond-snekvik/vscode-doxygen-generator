@@ -1,0 +1,193 @@
+{
+    "injectionSelector": "L:comment.block.c",
+    "scopeName": "doxytags",
+
+    "patterns": [
+        {
+            "match": "[@\\\\](note|file|details|short|since|test|brief|returns?|warning|todo|dir|static|authors?|attention|bug|copyright|date|deprecated|invariant|par|parblock|endparblock|remarks|result|version|secreflist|endsecreflist|tableofcontents|arg|manonly|htmlonly|endhtmlonly|rtfonly|endrtfonly|latexonly|endlatexonly|xml|xmlonly|n|internal)\\b",
+            "name": "meta.preprocessor.macro.c"
+        },
+        {
+            "match": "\\b(true|false|NULL)\\b",
+            "name": "constant.language.c"
+        },
+        {
+            "match": "[@\\\\](ref|class|enum|union|struct)\\s+((\\S+_t)|(\\S+(\\(\\))?))\\b",
+            "name": "meta.preprocessor.macro.c",
+            "captures": {
+                "3": {
+                    "name": "support.type.posix-reserved.c"
+                },
+                "4": {
+                    "name": "variable"
+                }
+            }
+        },
+        {
+            "match": "([@\\\\](sa|see))\\s+((\\S+_t)|(\\S+(\\(\\))?))(\\s*,\\s*((\\S+_t)|(\\S+(\\(\\))?)))*+\\b",
+            "captures": {
+                "1": {
+                    "name": "meta.preprocessor.macro.c"
+                },
+                "4": {
+                    "name": "support.type.posix-reserved.c"
+                },
+                "5": {
+                    "name": "variable"
+                },
+                "9": {
+                    "name": "support.type.posix-reserved.c"
+                },
+                "10": {
+                    "name": "variable"
+                }
+            }
+        },
+        {
+            "match": "[@\\\\]t?param(\\[(in|out|in,out)\\])?\\s+(\\S+)",
+            "name": "meta.preprocessor.macro.c",
+            "captures": {
+                "1": {
+                    "name": "meta.preprocessor.macro.c"
+                },
+                "2": {
+                    "name": "variable"
+                },
+                "3": {
+                    "name": "variable"
+                }
+            }
+        },
+        {
+            "match": "[@\\\\](retval|subpage|subsection|section|subsubsection|var|exception|throws?|anchor|cite|link|endlink|refitem|include|dontinclude|includelineno|includedoc|line|skip|skipline|snippet|snippetlineno|snippetdoc|until|verbinclude|htmlinclude|latexinclude|copydoc|copybrief|copydetails|emoji|dotfile|mscfile|diafile|li|def)\\s+(\\S+)",
+            "name": "meta.preprocessor.macro.c",
+            "captures": {
+                "2": {
+                    "name": "variable"
+                }
+            }
+        },
+        {
+            "match": "[@\\\\](def|in|addto|weak)group\\s+(\\S+)",
+            "name": "meta.preprocessor.macro.c",
+            "captures": {
+                "2": {
+                    "name": "variable"
+                }
+            }
+        },
+        {
+            "match": "[@\\\\][cp]\\s+(\\S+)",
+            "name": "meta.preprocessor.macro.c",
+            "captures":{
+                "1": {
+                    "name":"variable"
+                }
+            }
+        },
+        {
+            "match": "([@\\\\](a|e|em))\\s+(\\S+)\\b",
+            "captures":{
+                "1": {
+                    "name":"meta.preprocessor.macro.c"
+                },
+                "3": {
+                    "name":"markup.italic"
+                }
+            }
+        },
+        {
+            "match": "([@\\\\]b)\\s+(\\S+)\\b",
+            "captures":{
+                "1": {
+                    "name":"meta.preprocessor.macro.c"
+                },
+                "2": {
+                    "name":"markup.bold"
+                }
+            }
+        },
+        {
+            "match": "`.+?`",
+            "name": "variable"
+        },
+        {
+            "match": "\\s(0x[0-9a-fA-F]+|0b[01]+|[+-]?[0-9]+(\\.[0-9]+)?f?)[\\s.),\\]/}]",
+            "captures":{
+                "1": {
+                    "name": "constant.numeric"
+                }
+            }
+        },
+        {
+            "match": "[@\\\\][\\{\\}]",
+            "name": "meta.preprocessor.macro.c"
+        },
+        {
+            "begin": "[@\\\\](code|verbatim)({([^}]+)})?",
+            "end": "[@\\\\]end(code|verbatim)",
+            "name": "meta.preprocessor.macro.c",
+            "captures": {
+                "3": {
+                    "name": "variable"
+                }
+            },
+            "patterns": [
+                {
+                    "match": "^\\s?\\*",
+                    "name": "comment.block.c"
+                },
+                {
+                    "include": "source.c"
+                }
+            ]
+        },
+        {
+            "begin": "[@\\\\]msc",
+            "end": "[@\\\\]endmsc",
+            "name": "meta.preprocessor.macro.c",
+            "patterns": [
+                {
+                    "match": "^\\s?\\*",
+                    "name": "comment.block.c"
+                },
+                {
+                    "include": "source.mscgen"
+                }
+            ]
+        },
+        {
+            "begin": "[@\\\\]dot",
+            "end": "[@\\\\]enddot",
+            "name": "meta.preprocessor.macro.c",
+            "patterns": [
+                {
+                    "match": "^\\s?\\*",
+                    "name": "comment.block.c"
+                },
+                {
+                    "include": "source.dot"
+                }
+            ]
+        },
+        {
+            "begin": "[@\\\\]uml({([^}]+)})?",
+            "end": "[@\\\\]enduml",
+            "name": "meta.preprocessor.macro.c",
+            "captures": {
+                "3": {
+                    "name": "variable"
+                }
+            },
+            "patterns": [
+                {
+                    "match": "^\\s?\\*",
+                    "name": "comment.block.c"
+                },
+                {
+                    "include": "source.uml"
+                }
+            ]
+        }
+    ]
+}

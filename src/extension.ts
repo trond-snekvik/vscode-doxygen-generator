@@ -4,12 +4,18 @@ import * as vscode from 'vscode';
 var LINE_WIDTH = 100;
 
 function doxyFormatText(text: string) {
-    return text.replace(/^\s*\*/gm, '\n *');
+    return text.trim().replace(/^\s*\*/gm, '\n *');
+}
+
+function getConfig(key: string) {
+    var config = vscode.workspace.getConfiguration("doxygen-generator");
+    var val = config.get(key);
+    return (val == undefined) ? config.inspect(key).defaultValue : val;
 }
 
 export class FunctionParameter {
     name: string;
-    direction: string;
+    direction?: string;
     index?: number;
     type?: string;
     description?: string;
@@ -24,7 +30,7 @@ export class FunctionParameter {
     constructor(name: string, type?: string) {
         this.name = name;
         this.type = type;
-        this.direction = FunctionParameter.directionFromType(type);
+        this.direction = getConfig("param_dir") ? FunctionParameter.directionFromType(type) : null;
     }
 }
 
@@ -93,6 +99,11 @@ export class FunctionDefinition {
 
 export function getFunction(text: string) : FunctionDefinition {
     var func = new FunctionDefinition();
+    var prev_comment_end = text.lastIndexOf('*/')
+    if (prev_comment_end >= 0)
+    {
+        text = text.slice(prev_comment_end);
+    }
     // find the last function in the text
     var match = text.match(/(((?:[*a-zA-Z_][*\w]*\s+|\**)+)([\w_\d*]+)\s*\(([^()]*?)\))\s*(;|{|\s*$)/);
     if (!match)
@@ -124,7 +135,7 @@ export function getMacro(text: string) : FunctionDefinition {
     func.name = match[2];
     func.returns = false;
     (match[3] as string).split(',').filter(p => p.trim() != '...').forEach((textParam, index) => {
-        var param = new FunctionParameter(textParam);
+        var param = new FunctionParameter(textParam.trim());
         param.index = index;
         func.parameters.push(param);
     });
@@ -156,7 +167,7 @@ export function getFunctionType(text: string) : FunctionDefinition {
 }
 
 function getLastDoxyBlock(text: string): string {
-    var fullComment = text.match(/.*[\s\S]*(\/\*\*[\S\s]*?\*\/)/);
+    var fullComment = text.match(/.*[\s\S]*(\/\*\*[\S\s]*?\*\/)\r?\n?$/);
     if (!fullComment || fullComment.length == 0) return null;
     return fullComment[1];
 }
@@ -170,13 +181,16 @@ export function getFunctionFromDoxygen(text: string) : FunctionDefinition {
     var params = text.match(/@param[\s\S]+?(?=@param|@ret|@note|@warning|@info|\*\/$)/g);
     var returns = text.match(/@(?:returns|return|retval)\s+[\s\S]*?(?=@param|@ret|@note|@warning|@info|\*\/$)/g);
 
-    if (description.length > 1) func.description = description[1];
+    if (description.length > 1) {
+        func.description = description[1];
+        func.description.replace(/@brief\s*/, ' ');
+    }
     if (params) {
         params.forEach((text, index) => {
             var match = text.match(/@param(?:\[([^\]]+)\])?\s*([\w\d_]+)(?:\s+([\s\S]*))/);
             if (match.length > 0) {
                 var param = new FunctionParameter(match[2]);
-                param.direction = match[1];
+                param.direction = getConfig('param_dir') ? match[1] : null;
                 param.description = match[3].replace(/(?:\s*\*)+\s*$/, '');
                 param.index = index;
                 func.parameters.push(param);
@@ -208,35 +222,43 @@ function generateParamSnippet(param: FunctionParameter, snippet: vscode.SnippetS
     return snippet;
 }
 
-var SNIPPET_START = '/**\n';
-var SNIPPET_END = ' */\n';
+var SNIPPET_START = '\n/**';
+var SNIPPET_END = ' */';
 var LINE_SEPARATOR = ' *\n';
 
 export function generateSnippet(func: FunctionDefinition): vscode.SnippetString {
     var snippet = new vscode.SnippetString(SNIPPET_START);
+    if (getConfig('first_line'))
+        snippet.appendText(' ');
+    else
+        snippet.appendText('\n * ');
 
-    snippet.appendText(' * ');
     var tabstopIndex = 1;
+    console.dir(func);
+
+    if (getConfig('brief'))
+        snippet.appendText('@brief ');
 
     if (func.description) {
         func.description = doxyFormatText(func.description);
         func.description = func.description.replace(/^\s*\*\s*/, '');
-        func.description = func.description.replace(/(?:(?:\s*\*)+\s*)+$/, '\n *');
+        func.description = func.description.replace(/@brief\s*/, '').trim();
+        func.description = func.description.replace(/(?:(?:\s*\*)+\s*)+$/, '\n *').trim();
+
         snippet.appendPlaceholder(func.description, tabstopIndex++);
-        snippet.appendText('\n');
     }
     else {
         snippet.appendTabstop(tabstopIndex++);
-        snippet.appendText('\n' + LINE_SEPARATOR);
     }
+    snippet.appendText('\n');
 
     if (func.parameters.length > 0) {
         func.parameters.forEach((p, index) => {
             snippet = generateParamSnippet(p, snippet, tabstopIndex++);
         });
+        snippet.appendText(LINE_SEPARATOR);
     }
     if (func.returns) {
-        snippet.appendText(LINE_SEPARATOR);
         if (func.returnDescriptions.length > 0)
             func.returnDescriptions.forEach((r: string, index: number) => {
                 let [_, retkind, space, text] = r.match(/^(\S+)(\s*)([\s\S]*)/);
@@ -252,7 +274,7 @@ export function generateSnippet(func: FunctionDefinition): vscode.SnippetString 
                 snippet.appendText('\n');
             });
         else {
-            snippet.appendText(' * @returns ');
+            snippet.appendText(` * @${getConfig('default_return')} `);
             snippet.appendTabstop(tabstopIndex++);
             snippet.appendText('\n');
         }
@@ -262,7 +284,7 @@ export function generateSnippet(func: FunctionDefinition): vscode.SnippetString 
 }
 
 function generateSnippetFromDoc(cursor: vscode.Position, document: vscode.TextDocument): [vscode.SnippetString, vscode.Position | vscode.Range] {
-    var text = document.getText(new vscode.Range(0, 0, cursor.line + 50, 9999));
+    var text = document.getText(new vscode.Range(0, 0, cursor.line + 50, 9999)).replace('\r\n', '\n');
     var fromCurrentLine = document.getText(new vscode.Range(cursor.line, 0, cursor.line + 50, 9999));
     var func: FunctionDefinition;
     if (fromCurrentLine.startsWith('#define')) {
@@ -293,18 +315,24 @@ function generateSnippetFromDoc(cursor: vscode.Position, document: vscode.TextDo
         else
             blockStart = 0;
         func = getFunction(text) || getFunctionType(text);
-        text = text.slice(0, text.lastIndexOf(func.fullSignature));
+        text = text.slice(0, text.lastIndexOf(func.fullSignature))
     }
+
+    console.log(`text:\n${text}----\n`);
+
     if (!func) return [null, null];
     // cut off the text where the function we found begins, to find the doxyblock
     var fullComment = getLastDoxyBlock(text);
     if (fullComment) {
+        console.log(`Found full comment ${fullComment}`);
         func.merge(getFunctionFromDoxygen(fullComment), true);
 
         var range = new vscode.Range(document.positionAt(blockStart + text.lastIndexOf(fullComment)), document.positionAt(blockStart + text.length));
         return [generateSnippet(func), range];
     }
     else {
+        console.log('No comment found');
+
         // return the snippet and the position where it should be placed
         return [generateSnippet(func), document.positionAt(blockStart + text.length)];
     }

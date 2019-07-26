@@ -15,14 +15,55 @@
     ],
     "main": "./out/src/extension",
     "contributes": {
-        "commands": [{
-            "command": "doxygen-generator.generate",
-            "title": "Doxygen: Generate"
-        }],
-        "keybindings":[
+        "commands": [
+            {
+                "command": "doxygen-generator.generate",
+                "title": "Doxygen: Generate"
+            }
+        ],
+        "keybindings": [
             {
                 "command": "doxygen-generator.generate",
                 "key": "alt+Q"
+            }
+        ],
+        "grammars": [
+            {
+                "injectTo": ["source.c"],
+                "scopeName": "doxytags",
+                "path": "./syntaxes/doxytags.tmGrammar.json"
+            }
+        ],
+        "configuration":[
+            {
+                "title": "doxygen-generator",
+                "properties": {
+                    "doxygen-generator.brief": {
+                        "type":"boolean",
+                        "default": false,
+                        "description": "Include a @brief tag in the description by default."
+                    },
+                    "doxygen-generator.param_dir": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Include parameter directions (`[in,out]`) by default."
+                    },
+                    "doxygen-generator.first_line": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Start doxygen description on the opening line of the documentation block"
+                    },
+                    "doxygen-generator.default_return": {
+                        "type": "string",
+                        "default": "return",
+                        "enum": [
+                            "return",
+                            "returns",
+                            "retval"
+                        ],
+                        "description": "Default return value entry for the snippet."
+                    }
+                }
             }
         ]
     },
