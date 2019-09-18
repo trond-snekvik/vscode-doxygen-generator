@@ -43,6 +43,11 @@
                         "default": false,
                         "description": "Include a @brief tag in the description by default."
                     },
+                    "doxygen-generator.macro_def": {
+                        "type":"boolean",
+                        "default": false,
+                        "description": "Include a @def tag in the description of macros."
+                    },
                     "doxygen-generator.param_dir": {
                         "type": "boolean",
                         "default": true,
