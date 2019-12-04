@@ -11,7 +11,8 @@
         "Programming Languages"
     ],
     "activationEvents": [
-        "*"
+        "onLanguage:c",
+        "onLanguage:cpp"
     ],
     "main": "./out/src/extension",
     "contributes": {
