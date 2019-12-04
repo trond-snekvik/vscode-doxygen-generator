@@ -12,36 +12,42 @@
             "name": "constant.language.c"
         },
         {
-            "match": "[@\\\\](ref|class|enum|union|struct)\\s+((\\S+_t)|(\\S+(\\(\\))?))\\b",
-            "name": "meta.preprocessor.macro.c",
-            "captures": {
-                "3": {
-                    "name": "support.type.posix-reserved.c"
-                },
-                "4": {
+            "begin": "[@\\\\](?:ref|class|enum|union|struct)",
+            "end": "([\\w()\\.:\\->]+)",
+            "beginCaptures": {
+                "0": {
+                    "name": "meta.preprocessor.macro.c"
+                }
+            },
+            "endCaptures": {
+                "1": {
                     "name": "variable"
                 }
             }
         },
         {
-            "match": "([@\\\\](sa|see))\\s+((\\S+_t)|(\\S+(\\(\\))?))(\\s*,\\s*((\\S+_t)|(\\S+(\\(\\))?)))*+\\b",
-            "captures": {
+            "begin": "([@\\\\](?:sa|see))",
+            "end": "([\\w()\\.:\\->]+)\\b(?!,)",
+            "beginCaptures": {
                 "1": {
                     "name": "meta.preprocessor.macro.c"
-                },
-                "4": {
-                    "name": "support.type.posix-reserved.c"
-                },
-                "5": {
-                    "name": "variable"
-                },
-                "9": {
-                    "name": "support.type.posix-reserved.c"
-                },
-                "10": {
+                }
+            },
+            "endCaptures": {
+                "1": {
                     "name": "variable"
                 }
-            }
+            },
+            "patterns": [
+                {
+                    "match": "([\\w()\\.:\\->]+),",
+                    "captures": {
+                        "1": {
+                            "name": "variable"
+                        }
+                    }
+                }
+            ]
         },
         {
             "match": "[@\\\\]t?param(\\[(in|out|in,out)\\])?\\s+(\\S+)",
@@ -59,50 +65,43 @@
             }
         },
         {
-            "match": "[@\\\\](retval|subpage|subsection|section|subsubsection|var|fn|typedef|property|exception|throws?|anchor|cite|link|refitem|include|dontinclude|includelineno|includedoc|line|skip|skipline|snippet|snippetlineno|snippetdoc|until|verbinclude|htmlinclude|latexinclude|copydoc|copybrief|copydetails|emoji|dotfile|mscfile|diafile|li|def|cond)\\s+(\\S+)",
-            "name": "meta.preprocessor.macro.c",
-            "captures": {
-                "2": {
+            "begin": "[@\\\\](retval|subpage|subsection|section|subsubsection|var|fn|typedef|property|exception|throws?|anchor|cite|link|refitem|include|dontinclude|includelineno|includedoc|line|skip|skipline|snippet|snippetlineno|snippetdoc|until|verbinclude|htmlinclude|latexinclude|copydoc|copybrief|copydetails|emoji|dotfile|mscfile|diafile|li|def|cond|defgroup|ingroup|addtogroup|weakgroup|c|b)\\b",
+            "end": "[\\w()\\.:\\->]+",
+            "beginCaptures": {
+                "0": {
+                    "name": "meta.preprocessor.macro.c"
+                }
+            },
+            "endCaptures": {
+                "0": {
                     "name": "variable"
                 }
             }
         },
         {
-            "match": "[@\\\\](def|in|addto|weak)group\\s+(\\S+)",
-            "name": "meta.preprocessor.macro.c",
-            "captures": {
-                "2": {
-                    "name": "variable"
-                }
-            }
-        },
-        {
-            "match": "[@\\\\][cp]\\s+([a-zA-Z0-9_]+([#$-.:->]+[a-zA-Z0-9_]+)*)",
-            "name": "meta.preprocessor.macro.c",
-            "captures":{
-                "1": {
-                    "name":"variable"
-                }
-            }
-        },
-        {
-            "match": "([@\\\\](a|e|em))\\s+(\\S+)\\b",
-            "captures":{
-                "1": {
+            "begin": "[@\\\\](a|e|em)\\b",
+            "end": "[\\w()\\.:\\->]+",
+            "beginCaptures":{
+                "0": {
                     "name":"meta.preprocessor.macro.c"
-                },
-                "3": {
+                }
+            },
+            "endCaptures": {
+                "0": {
                     "name":"markup.italic"
                 }
             }
         },
         {
-            "match": "([@\\\\]b)\\s+(\\S+)\\b",
-            "captures":{
-                "1": {
+            "begin": "[@\\\\]b\\b",
+            "end": "[\\w()\\.:\\->]+",
+            "beginCaptures":{
+                "0": {
                     "name":"meta.preprocessor.macro.c"
-                },
-                "2": {
+                }
+            },
+            "endCaptures": {
+                "0": {
                     "name":"markup.bold"
                 }
             }
