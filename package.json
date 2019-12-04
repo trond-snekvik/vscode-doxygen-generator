@@ -8,7 +8,7 @@
         "vscode": "^1.12.0"
     },
     "categories": [
-        "Other"
+        "Programming Languages"
     ],
     "activationEvents": [
         "*"
@@ -67,6 +67,11 @@
                             "retval"
                         ],
                         "description": "Default return value entry for the snippet."
+                    },
+                    "doxygen-generator.align_params": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Align parameter description"
                     }
                 }
             }

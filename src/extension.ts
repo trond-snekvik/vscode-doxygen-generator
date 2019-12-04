@@ -8,8 +8,8 @@ class DoxygenParseException extends Error {
     }
 }
 
-function doxyFormatText(text: string, indent:string='') {
-    return text.trim().replace(/^\s*\*/gm, `\n${indent} *`);
+function doxyFormatText(text: string) {
+    return text.replace(/^\s*\*/gm, ` *`);
 }
 
 function getConfig(key: string) {
@@ -228,13 +228,14 @@ export function getFunctionFromDoxygen(text: string) : FunctionDefinition {
     return func;
 }
 
-function generateParamSnippet(param: FunctionParameter, snippet: vscode.SnippetString, index: number, indent: string = ''): vscode.SnippetString {
-    snippet.appendText(`${indent} * @param`);
+function generateParamSnippet(param: FunctionParameter, snippet: vscode.SnippetString, index: number, indent: string = '', paramMaxWidth=0, lineStartSpace=' '): vscode.SnippetString {
+    snippet.appendText(`${indent} *${lineStartSpace}@param`);
     if (param.direction)
         snippet.appendText(`[${param.direction}]`);
     snippet.appendText(` ${param.name} `)
+    snippet.appendText(' '.repeat(paramMaxWidth - param.name.length));
     if (param.description)
-        snippet.appendPlaceholder(param.description.trim(), index);
+        snippet.appendPlaceholder(doxyFormatText(param.description.trim()), index);
     else
         snippet.appendTabstop(index);
     snippet.appendText('\n');
@@ -249,53 +250,55 @@ function getStartAndIndent(indent: string, has_comment: boolean): [string, strin
      * we'll have to make the indent a single space to avoid it adding
      * the indent twice, but only if we're indenting with spaces. */
     if (indent.length == 0 || !has_comment)
-        return ['\n' + indent, indent];
+        return [indent, indent];
     else if (!tabs)
         return [' ', ' '];
     return [indent, indent];
 }
 
-export function generateSnippet(func: FunctionDefinition): vscode.SnippetString {
+export function generateSnippet(func: FunctionDefinition, indent='', startText=''): vscode.SnippetString {
 
-    var [startText, indent] = getStartAndIndent(func.indent, func.hasDoxyblock);
+    // var [startText, indent] = getStartAndIndent(func.indent, func.hasDoxyblock);
 
     var snippet_start = `/**`;
     var snippet_end = indent + ' */';
-    var line_start = `${indent} *`;
-    var line_separator = line_start + '\n';
+    var lineStart = `${indent} *`;
+    var lineStartSpace = getConfig('first_line') ? '  ' : ' ';
+    var lineSeparator = lineStart + '\n';
 
-    var snippet = new vscode.SnippetString(startText + snippet_start);
+    var snippet = new vscode.SnippetString(startText + indent + snippet_start);
 
     if (getConfig('first_line'))
         snippet.appendText(' ');
     else
-        snippet.appendText(`\n${line_start} `);
+        snippet.appendText(`\n${lineStart}${lineStartSpace}`);
 
     var tabstopIndex = 1;
 
     if (func.isMacro && getConfig('macro_def'))
-        snippet.appendText(`@def ${func.name}\n${line_separator}${line_start} `);
+        snippet.appendText(`@def ${func.name}\n${lineSeparator}${lineStart}${lineStartSpace}`);
 
     if (getConfig('brief'))
         snippet.appendText('@brief ');
 
     if (func.description) {
-        func.description = doxyFormatText(func.description, indent);
+        func.description = doxyFormatText(func.description);
         func.description = func.description.replace(/^\s*@def\s*\S+\s*/g, '').trim();
         func.description = func.description.replace(/@brief\s*/g, '').trim();
-        func.description = func.description.replace(/^(\s*\*\s*(\r\n|\r|\n)?)+/g, '');
+        func.description = func.description.replace(/^(\s*\*\s*(\r?\n)?)+/g, '');
         console.log('DESCRIPTION: ' + func.description);
-        func.description = func.description.replace(/(\s*\*\s*(\r\n|\r|\n)?)+$/, '').trim();
+        func.description = func.description.replace(/(\s*\*\s*(\r?\n)?)+$/, '').trim();
 
-        if (func.hasDoxyblock && func.description.match(/^.*(?:\r\n|\r|\n)\s*\*?\s*(?:\r\n|\r|\n)/)) {
+        if (func.hasDoxyblock && func.description.match(/^.*(?:\r?\n)\s*\*?\s*(?:\r?\n)/)) {
             var lines = func.description.match(/[^\r\n]+/g);
             func.description = lines.slice(2).join('\n');
 
             snippet.appendPlaceholder(lines[0], tabstopIndex++);
             snippet.appendText('\n');
-            snippet.appendText(line_separator);
-            snippet.appendText(line_start);
-            func.description = func.description.replace(/^\s*\*\s*/g, ' ');
+            snippet.appendText(lineSeparator);
+            snippet.appendText(lineStart);
+            func.description = func.description.replace(/^[ \t]*\*[ \t]*/gm, lineStart + lineStartSpace);
+            func.description = func.description.replace(/^\s*\*\s*/g, lineStartSpace);
         }
 
         snippet.appendPlaceholder(func.description, tabstopIndex++);
@@ -306,20 +309,22 @@ export function generateSnippet(func: FunctionDefinition): vscode.SnippetString 
     snippet.appendText('\n');
 
     if (func.parameters.length > 0) {
-        snippet.appendText(line_separator);
+        snippet.appendText(lineSeparator);
+
+        var paramMaxWidth = getConfig('align_params') && [...func.parameters].sort((a, b) => b.name.length - a.name.length)[0].name.length;
         func.parameters.forEach((p, index) => {
-            snippet = generateParamSnippet(p, snippet, tabstopIndex++, indent);
+            snippet = generateParamSnippet(p, snippet, tabstopIndex++, indent, paramMaxWidth, lineStartSpace);
         });
     }
     if (func.returns) {
-        snippet.appendText(line_separator);
+        snippet.appendText(lineSeparator);
         if (func.returnDescriptions.length > 0)
             func.returnDescriptions.forEach((r: string, index: number) => {
                 let [_, retkind, space, text] = r.match(/^(\S+)(\s*)([\s\S]*)/);
-                snippet.appendText(`${line_start} @${retkind}`);
+                snippet.appendText(`${lineStart}${lineStartSpace}@${retkind}`);
                 if (text) {
                     snippet.appendText(space);
-                    snippet.appendPlaceholder(text, tabstopIndex++);
+                    snippet.appendPlaceholder(doxyFormatText(text), tabstopIndex++);
                 }
                 else {
                     snippet.appendText(' ');
@@ -328,7 +333,7 @@ export function generateSnippet(func: FunctionDefinition): vscode.SnippetString 
                 snippet.appendText('\n');
             });
         else {
-            snippet.appendText(`${line_start} @${getConfig('default_return')} `);
+            snippet.appendText(`${lineStart}${lineStartSpace}@${getConfig('default_return')} `);
             snippet.appendTabstop(tabstopIndex++);
             snippet.appendText('\n');
         }
@@ -337,76 +342,68 @@ export function generateSnippet(func: FunctionDefinition): vscode.SnippetString 
     return snippet;
 }
 
-function generateSnippetOfWholeComment(fullComment: string, lineIndent: string=''): vscode.SnippetString {
-
+function generateSnippetOfWholeComment(fullComment: string, indent: string='', start=''): vscode.SnippetString {
     var match = fullComment.match(/\/\*\*\s*([\s\S]*?)\*\//);
 
-    var contents = match ? match[1].trim() : '';
+    var contents = match ? match[1].trim().replace(/\n\s*\*/g, '\n *').replace(/^\s*\*\s*/, '\n * ') : '';
     console.log(`FULL COMMENT: --${contents}--`)
-    var [start, indent] = getStartAndIndent(lineIndent, fullComment.length > 0);
 
     var snippet = new vscode.SnippetString(`${start}/** `);
-    snippet.appendPlaceholder(doxyFormatText(contents, indent));
+    snippet.appendPlaceholder(contents);
     if (contents.match(/(\r\n|\r|\n)/))
-        snippet.appendText('\n' + indent);
+        snippet.appendText('\n');
     snippet.appendText(' */');
     return snippet
 }
 
 function generateSnippetFromDoc(cursor: vscode.Position, document: vscode.TextDocument): [vscode.SnippetString, vscode.Position | vscode.Range] {
-    var text = document.getText(new vscode.Range(0, 0, cursor.line + 50, 9999)).replace('\r\n', '\n');
-    var fromCurrentLine = document.getText(new vscode.Range(cursor.line, 0, cursor.line + 50, 9999));
+    var beforeCursor = document.getText(new vscode.Range(new vscode.Position(Math.max(0, cursor.line - 100), 0), cursor)).replace('\r\n', '\n');
+    var afterCursor = document.getText(new vscode.Range(cursor, new vscode.Position(Math.max(0, cursor.line + 20), 0))).replace('\r\n', '\n');
+
+    // find first statement separator after cursor, and end the text there:
+    var index = afterCursor.search(/(;|#|\)\s*[{;])[\s\S]*/);
+    if (index >= 0) {
+        afterCursor = afterCursor.slice(0, index+1);
+    }
+
+    var cleanBefore = beforeCursor.replace(/[\s\S]*([{};#])/g, '$1');
+    var text = cleanBefore + afterCursor;
+    var fullText = beforeCursor + afterCursor;
+
+    var thisLine = afterCursor.slice(0, afterCursor.indexOf('\n'));
+
     var func: FunctionDefinition;
-    if (fromCurrentLine.startsWith('#define')) {
+    if (thisLine.startsWith('#define')) {
         // This is a macro, and macro names must be defined on a single line
-        func = getMacro(fromCurrentLine);
+        func = getMacro(thisLine);
 
         if (func) {
             text = text.slice(0, text.lastIndexOf(func.fullSignature));
         } else {
             text = text.slice(0, text.lastIndexOf('#define'));
         }
-
-        // find the last closing brace to reduce the regex search
-        var blockStart = Math.max(text.lastIndexOf(';'), text.lastIndexOf('}'));
-        if (blockStart > 0)
-            text = text.slice(blockStart);
-        else
-            blockStart = 0;
     }
     else {
+        var strippedText = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^#[\s\S]*(?<!\\)\r?\n/, '');
         // find the first block end after the cursor, and cut off there
-        var matcher = new RegExp('((?:.*(?:\\r\\n|\\n|\\r)){' + (cursor.line - 1) + '}[\\s\\S]*?)[;{}]', 'm');
-        var newTextMatch = text.match(matcher);
-        if (newTextMatch && newTextMatch.length > 0) {
-            text = newTextMatch[1]
-        }
-
-        // find the last closing brace to reduce the regex search
-        var blockStart = Math.max(text.lastIndexOf(';'), text.lastIndexOf('}'), text.lastIndexOf('{'));
-        if (blockStart > 0)
-            text = text.slice(blockStart);
-        else
-            blockStart = 0;
-        func = getFunction(text) || getFunctionType(text);
-
-        if (func) {
-            text = text.slice(0, text.lastIndexOf(func.fullSignature))
+        var funcText = strippedText.match(/(?:(?:\w+[*\s]+)+\(\s*\*+(?:\w+[*\s]+)*\w+\s*\)|(?:\w+[*\s]+)+\w+)\s*\([^;]*?\)$/);
+        if (funcText) {
+            text = text.slice(0, text.lastIndexOf(funcText[0]));
+            func = getFunction(funcText[0]) || getFunctionType(funcText[0]);
+        } else {
+            text = cleanBefore + thisLine.match(/[ \t]*/)[0];
         }
     }
-    var commentEnd = text.lastIndexOf('\n');
-    var commentBlock = text.substr(0, commentEnd);
-    var indentMatch = text.substr(commentEnd).match(/\s*/);
-    var lineIndent = indentMatch ? stripLineEndings(indentMatch[0]) : '';
 
-    console.log(`text:\n${commentBlock}----\n`);
-
-
-    // cut off the text where the function we found begins, to find the doxyblock
-    var fullComment = getLastDoxyBlock(commentBlock)
-    if (fullComment) {
+    var commentMatch = text.match(/([ \t]*)(\/\*\*[\s\S]*\*\/)[ \t]*\n?[ \t]*$/)
+    if (commentMatch) {
+        var fullComment = commentMatch[2];
+        var lineIndent = commentMatch[1];
         console.log(`Found full comment ${fullComment}`);
-        var range = new vscode.Range(document.positionAt(blockStart + commentBlock.lastIndexOf(fullComment)), document.positionAt(blockStart + commentBlock.length));
+
+        var blockStart = document.offsetAt(cursor) - beforeCursor.length + fullText.lastIndexOf(fullComment);
+
+        var range = new vscode.Range(document.positionAt(blockStart), document.positionAt(blockStart + fullComment.length));
         if (func) {
             func.merge(getFunctionFromDoxygen(fullComment), true);
             return [generateSnippet(func), range];
@@ -416,13 +413,16 @@ function generateSnippetFromDoc(cursor: vscode.Position, document: vscode.TextDo
     }
     else {
         console.log('No comment found');
-        var snippetPos = document.positionAt(blockStart + commentBlock.length);
-        // return the snippet and the position where it should be placed
+        var indentMatch = text.match(/[ \t]*$/);
+        var indent = indentMatch ? indentMatch[0] : '';
         if (func) {
-            return [generateSnippet(func), snippetPos];
+            var blockStart = document.offsetAt(cursor) - beforeCursor.length + fullText.indexOf(func.fullSignature) - indent.length - 1;
+            var snippetPos = document.positionAt(blockStart);
+            return [generateSnippet(func, indent.slice(snippetPos.character), '\n'), snippetPos];
         }
         else {
-            return [generateSnippetOfWholeComment('', lineIndent), snippetPos];
+            var snippetPos = cursor.translate(-1);
+            return [generateSnippetOfWholeComment('', indent, '\n' + indent), snippetPos];
         }
     }
 }
@@ -639,40 +639,49 @@ export function activate(context: vscode.ExtensionContext) {
                 var line = e.document.lineAt(selectionPos.line).text;
                 var insertion : string;
 
+                var lineStartSpace = ' ';
+
                 var starPos = line.indexOf('*');
                 var isBeforeStar = selectionPos.character <= starPos;
                 var prevLine = e.document.lineAt(selectionPos.line - 1).text;
                 var wasStartLine = !!prevLine.trim().match(/^\s*\/\*\*+/);
-                // var wasSingleLineComment = !!(prevLine.match(/\/\*\*/) && line.match(/\*\//));
-                // if (line.trim() === '*/' && prevLine.trim().length !== 0) {
-                //     return;
-                // }
+
+                var prevLineIndentMatch = prevLine.match(/^\s*[/*]*(\s*(?:[@\\]param(?:\s*\[.*?\])?\s+\w+\s+)?)/);
+                if (prevLineIndentMatch) {
+                    var prevLineIndent = prevLineIndentMatch[1].length;
+                    lineStartSpace = ' '.repeat(prevLineIndent);
+                }
+
+                var indent: string;
 
                 if (isBeforeStar) {
                     if (prevLine.trim().length === 0) {
-                        var indent = prevLine.match(/^\s*/)[0];
+                        indent = prevLine.match(/^\s*/)[0];
                         insertion = ' '.repeat(starPos - selectionPos.character);
                         // insertion = indent.length > selectionPos.character ? indent + ' '.repeat(indent.length - selectionPos.character + 1) : '';
-                        insertion += '* ';
+                        insertion += '*' + lineStartSpace;
                         selectionPos = selectionPos.translate(-1);
                     }
                     else {
-                        var indent = prevLine.match(/^\s*/)[0];
-                        var firstNonSpace = line.search(/\S/);
-                        insertion = indent + ' '.repeat(Math.max(0, indent.length - firstNonSpace + (wasStartLine ? 1 : 0) + ((prevLine.trim().length === 0) ? 1 : 0)));
+                        indent = prevLine.match(/^\s*/)[0];
 
-                        if (line.trim() !== '*/') {
-                            insertion += '* ';
+                        var firstNonSpace = line.search(/\S/);
+
+                        if (line.trim() === '*/') {
+                            insertion = ' '.repeat((wasStartLine ? 1 : 0) - firstNonSpace);
+                        } else {
+                            insertion = ' '.repeat(Math.max(0, selectionPos.character - indent.length + (wasStartLine ? 1 : 0) + ((prevLine.trim().length === 0) ? 1 : 0)));
+                            insertion += '*' + lineStartSpace;
                         }
                     }
                 }
                 else {
-                    insertion = wasStartLine ? ' * ' : '* ';
+                    insertion = (wasStartLine ? ' *' : '*') + lineStartSpace;
                 }
 
                 vscode.window.activeTextEditor.edit(editBuilder => {
                     editBuilder.insert(selectionPos, insertion);
-                }, { undoStopBefore: false, undoStopAfter: true });
+                }, { undoStopBefore: false, undoStopAfter: false });
             }
         }
     });
