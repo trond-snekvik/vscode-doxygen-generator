@@ -1,5 +1,5 @@
 {
-    "injectionSelector": "L:comment.block.c",
+    "injectionSelector": "L:comment.block.documentation.c",
     "scopeName": "doxytags",
 
     "patterns": [
