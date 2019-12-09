@@ -65,8 +65,19 @@
             }
         },
         {
-            "begin": "[@\\\\](retval|subpage|subsection|section|subsubsection|var|fn|typedef|property|exception|throws?|anchor|cite|link|refitem|include|dontinclude|includelineno|includedoc|line|skip|skipline|snippet|snippetlineno|snippetdoc|until|verbinclude|htmlinclude|latexinclude|copydoc|copybrief|copydetails|emoji|dotfile|mscfile|diafile|li|def|cond|defgroup|ingroup|addtogroup|weakgroup|c|b)\\b",
-            "end": "[\\w()\\.:\\->]+",
+            "match": "([@\\\\](?:retval))\\s+([\\w()\\.:\\->]+)",
+            "captures": {
+                "1": {
+                    "name": "meta.preprocessor.macro.c"
+                },
+                "2": {
+                    "name": "variable"
+                }
+            }
+        },
+        {
+            "begin": "[@\\\\](subpage|subsection|section|subsubsection|var|fn|typedef|property|exception|throws?|anchor|cite|link|refitem|include|dontinclude|includelineno|includedoc|line|skip|skipline|snippet|snippetlineno|snippetdoc|until|verbinclude|htmlinclude|latexinclude|copydoc|copybrief|copydetails|emoji|dotfile|mscfile|diafile|li|def|cond|defgroup|ingroup|addtogroup|weakgroup|c|b)\\b",
+            "end": "[\\w0-9()\\.:\\->]+",
             "beginCaptures": {
                 "0": {
                     "name": "meta.preprocessor.macro.c"
