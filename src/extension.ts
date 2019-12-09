@@ -646,7 +646,7 @@ export function activate(context: vscode.ExtensionContext) {
                 var prevLine = e.document.lineAt(selectionPos.line - 1).text;
                 var wasStartLine = !!prevLine.trim().match(/^\s*\/\*\*+/);
 
-                var prevLineIndentMatch = prevLine.match(/^\s*[/*]*(\s*(?:[@\\]param(?:\s*\[.*?\])?\s+\w+\s+)?)/);
+                var prevLineIndentMatch = prevLine.match(/^\s*[/*]*(\s*(?:[@\\](?:param(?:\s*\[.*?\])?\s+\w+|returns?|retval\s+\S+)\s+)?)/);
                 if (prevLineIndentMatch) {
                     var prevLineIndent = prevLineIndentMatch[1].length;
                     lineStartSpace = ' '.repeat(prevLineIndent);
